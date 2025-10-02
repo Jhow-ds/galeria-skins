@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galeria de Assets Dinâmica</title>
+    <!-- Tailwind CSS para estilização rápida -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo customizado para a barra de rolagem */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* bg-gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* bg-gray-500 */
+        }
+
+        /* Classes para as bordas de raridade */
+        .rarity-comum { border-color: #6b7280; } /* gray-500 */
+        .rarity-incomum { border-color: #22c55e; } /* green-500 */
+        .rarity-raro { border-color: #3b82f6; } /* blue-500 */
+        .rarity-epico { border-color: #a855f7; } /* purple-500 */
+        .rarity-lendario { border-color: #f97316; } /* orange-500 */
+        .rarity-mitico { border-color: #ec4899; } /* pink-500 */
+
+        /* Animação de fade-in para o modal */
+        .modal-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        /* Animação do spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans">
+
+    <!-- Container Principal -->
+    <div class="container mx-auto p-4 md:p-8">
+
+        <!-- Cabeçalho -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white">Galeria de Assets do Jogo</h1>
+            <p class="text-gray-400 mt-2">Busque e copie os links dos assets diretamente do seu repositório GitHub.</p>
+        </header>
+        
+        <!-- Seção de Configuração do GitHub -->
+        <div id="github-config" class="bg-gray-800 p-6 rounded-lg shadow-lg mb-8 flex flex-col md:flex-row gap-4 justify-center items-center">
+             <div class="flex-grow w-full md:w-auto">
+                <label for="github-user" class="text-sm font-medium mb-1 text-gray-300 block">Usuário do GitHub</label>
+                <input type="text" id="github-user" placeholder="ex: seunome" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+             <div class="flex-grow w-full md:w-auto">
+                <label for="github-repo" class="text-sm font-medium mb-1 text-gray-300 block">Nome do Repositório</label>
+                <input type="text" id="github-repo" placeholder="ex: meu-jogo-assets" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="w-full md:w-auto mt-4 md:mt-0">
+                <button id="load-assets" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors h-full mt-0 md:mt-6">Carregar Assets</button>
+            </div>
+        </div>
+
+        <!-- Seção de Filtros (inicialmente oculta) -->
+        <div id="filters-section" class="bg-gray-800 p-4 rounded-lg shadow-lg mb-8 flex-wrap gap-4 justify-center items-center hidden">
+            <!-- Filtro por Tipo -->
+            <div class="flex flex-col">
+                <label for="filter-type" class="text-sm font-medium mb-1 text-gray-300">Tipo</label>
+                <select id="filter-type" class="bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">Todos os Tipos</option>
+                    <option value="skin">Skins</option>
+                    <option value="item">Itens</option>
+                </select>
+            </div>
+            <!-- Filtro por Classe -->
+            <div class="flex flex-col">
+                <label for="filter-class" class="text-sm font-medium mb-1 text-gray-300">Classe</label>
+                <select id="filter-class" class="bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">Todas as Classes</option>
+                    <option value="warrior">Warrior</option>
+                    <option value="ladino">Ladino</option>
+                    <option value="mago">Mago</option>
+                    <option value="monstro">Monstro</option>
+                </select>
+            </div>
+            <!-- Filtro por Raridade -->
+            <div class="flex flex-col">
+                <label for="filter-rarity" class="text-sm font-medium mb-1 text-gray-300">Raridade</label>
+                <select id="filter-rarity" class="bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">Todas as Raridades</option>
+                    <option value="comum">Comum</option>
+                    <option value="incomum">Incomum</option>
+                    <option value="raro">Raro</option>
+                    <option value="epico">Épico</option>
+                    <option value="lendario">Lendário</option>
+                    <option value="mitico">Mítico</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Galeria de Imagens -->
+        <div id="loading-state" class="text-center p-10 hidden">
+            <div class="spinner mx-auto"></div>
+            <p class="mt-4 text-gray-400">Buscando assets no repositório...</p>
+        </div>
+        <main id="gallery-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            <!-- As imagens serão inseridas aqui via JavaScript -->
+        </main>
+        <p id="no-results" class="text-center text-gray-500 mt-8 text-xl hidden">Nenhum item encontrado.</p>
+
+    </div>
+
+    <!-- Modal para Visualização e Cópia -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div id="modal-content" class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-3xl w-full max-h-screen overflow-y-auto relative modal-fade-in">
+            <button id="close-modal" class="absolute top-2 right-2 text-gray-400 hover:text-white text-3xl">&times;</button>
+            <h2 id="modal-title" class="text-2xl font-bold mb-4 text-white"></h2>
+            <div id="modal-images-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Imagens do modal serão inseridas aqui -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast de Notificação -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300">
+        Link copiado para a área de transferência!
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Elementos do DOM ---
+            const galleryContainer = document.getElementById('gallery-container');
+            const noResults = document.getElementById('no-results');
+            const filtersSection = document.getElementById('filters-section');
+            const filterType = document.getElementById('filter-type');
+            const filterClass = document.getElementById('filter-class');
+            const filterRarity = document.getElementById('filter-rarity');
+            const modal = document.getElementById('modal');
+            const closeModalBtn = document.getElementById('close-modal');
+            const toast = document.getElementById('toast');
+            const githubUser = document.getElementById('github-user');
+            const githubRepo = document.getElementById('github-repo');
+            const loadAssetsBtn = document.getElementById('load-assets');
+            const loadingState = document.getElementById('loading-state');
+            
+            let processedAssets = [];
+            let githubBaseUrl = '';
+
+            // --- FUNÇÕES DA API DO GITHUB ---
+
+            async function fetchDirectoryContents(path, user, repo) {
+                const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Erro na rede: ${response.statusText}`);
+                    }
+                    const data = await response.json();
+                    let files = [];
+                    for (const item of data) {
+                        if (item.type === 'file' && item.name.endsWith('.png')) {
+                            if (!item.name.startsWith('icon-')) { // Ignorar ícones na busca inicial
+                                files.push(item.download_url);
+                            }
+                        } else if (item.type === 'dir') {
+                            const subFiles = await fetchDirectoryContents(item.path, user, repo);
+                            files = files.concat(subFiles);
+                        }
+                    }
+                    return files;
+                } catch (error) {
+                    console.error(`Falha ao buscar o diretório ${path}:`, error);
+                    return []; // Retorna array vazio em caso de erro
+                }
+            }
+            
+            async function loadAllAssets() {
+                const user = githubUser.value.trim();
+                const repo = githubRepo.value.trim();
+
+                if (!user || !repo) {
+                    alert('Por favor, insira o usuário e o nome do repositório do GitHub.');
+                    return;
+                }
+                
+                loadingState.classList.remove('hidden');
+                galleryContainer.innerHTML = '';
+                filtersSection.classList.add('hidden');
+                noResults.classList.add('hidden');
+
+                githubBaseUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/`;
+
+                const skinFiles = await fetchDirectoryContents('skins', user, repo);
+                const itemFiles = await fetchDirectoryContents('itens', user, repo);
+                const allFiles = [...skinFiles, ...itemFiles];
+                
+                processedAssets = allFiles.map(parseUrlToAsset).filter(Boolean);
+
+                loadingState.classList.add('hidden');
+                
+                if (processedAssets.length > 0) {
+                    filtersSection.style.display = 'flex';
+                    applyFilters();
+                } else {
+                    noResults.classList.remove('hidden');
+                    noResults.textContent = 'Nenhum asset .png encontrado nas pastas "skins" ou "itens". Verifique o nome do usuário/repositório e a estrutura de pastas.'
+                }
+            }
+            
+            function parseUrlToAsset(url) {
+                const path = new URL(url).pathname.split('/').slice(4).join('/'); // Remove /user/repo/branch
+                const parts = path.split('/');
+                
+                const type = parts[0] === 'skins' ? 'skin' : (parts[0] === 'itens' ? 'item' : null);
+                if (!type) return null;
+
+                const assetClass = parts[1];
+                const filename = parts[parts.length - 1];
+                
+                const { rarity, name } = parseFilename(filename);
+
+                const baseAsset = { type, class: assetClass, rarity, name, path };
+
+                if (type === 'item') {
+                    const iconPath = path.replace(/([^/]+)$/, 'icon-' + filename);
+                    return { ...baseAsset, mainPath: path, iconPath };
+                }
+                return baseAsset;
+            }
+
+            // --- FUNÇÕES AUXILIARES ---
+            function parseFilename(filename) {
+                const cleanFilename = filename.replace('.png', '');
+                const parts = cleanFilename.split('-');
+                const rarity = parts[0];
+                const name = parts.slice(1).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                return { rarity, name };
+            }
+
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast();
+                }).catch(err => {
+                    console.error('Falha ao copiar o texto: ', err);
+                });
+            }
+
+            function showToast() {
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 2000);
+            }
+
+            // --- LÓGICA DA GALERIA E FILTROS ---
+            function renderGallery(items) {
+                galleryContainer.innerHTML = '';
+                if (items.length === 0) {
+                    noResults.classList.remove('hidden');
+                    noResults.textContent = 'Nenhum item encontrado com os filtros selecionados.';
+                    return;
+                }
+                noResults.classList.add('hidden');
+
+                items.forEach(item => {
+                    const displayPath = item.type === 'item' ? item.iconPath : item.path;
+                    const card = document.createElement('div');
+                    card.className = `relative bg-gray-800 rounded-lg overflow-hidden shadow-md group cursor-pointer border-4 rarity-${item.rarity} hover:scale-105 transition-transform duration-200`;
+                    card.innerHTML = `
+                        <img src="${githubBaseUrl}${displayPath}" alt="${item.name}" class="w-full h-full object-cover aspect-square" onerror="this.onerror=null;this.src='https://placehold.co/150x150/1f2937/ffffff?text=?';">
+                        <div class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <p class="text-white text-center text-sm font-bold p-2">${item.name}</p>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => openModal(item));
+                    galleryContainer.appendChild(card);
+                });
+            }
+
+            function applyFilters() {
+                const type = filterType.value;
+                const charClass = filterClass.value;
+                const rarity = filterRarity.value;
+
+                const filteredAssets = processedAssets.filter(item => {
+                    const typeMatch = type === 'all' || item.type === type;
+                    const classMatch = charClass === 'all' || item.class === charClass;
+                    const rarityMatch = rarity === 'all' || item.rarity === rarity;
+                    return typeMatch && classMatch && rarityMatch;
+                });
+                renderGallery(filteredAssets);
+            }
+
+            // --- LÓGICA DO MODAL ---
+            function openModal(item) {
+                const modalTitle = document.getElementById('modal-title');
+                const modalImagesContainer = document.getElementById('modal-images-container');
+                modalTitle.textContent = `${item.name} (${item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)})`;
+                modalImagesContainer.innerHTML = '';
+                
+                if (item.type === 'skin') {
+                    const fullURL = `${githubBaseUrl}${item.path}`;
+                    modalImagesContainer.innerHTML = `
+                        <div class="col-span-1 md:col-span-2">
+                            <p class="text-center font-semibold mb-2 text-gray-300">Skin</p>
+                            <img src="${fullURL}" alt="${item.name}" class="mx-auto max-h-96 rounded-md mb-2 bg-gray-700 p-2" onerror="this.onerror=null;this.src='https://placehold.co/400x400/1f2937/ffffff?text=Imagem n%C3%A3o encontrada';">
+                            <button class="copy-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors" data-link="${fullURL}">Copiar Link da Skin</button>
+                        </div>`;
+                } else { // item
+                    const fullMainURL = `${githubBaseUrl}${item.mainPath}`;
+                    const fullIconURL = `${githubBaseUrl}${item.iconPath}`;
+                    modalImagesContainer.innerHTML = `
+                        <div>
+                            <p class="text-center font-semibold mb-2 text-gray-300">Imagem Principal</p>
+                            <img src="${fullMainURL}" alt="${item.name}" class="mx-auto max-h-96 rounded-md mb-2 bg-gray-700 p-2" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1f2937/ffffff?text=Imagem n%C3%A3o encontrada';">
+                            <button class="copy-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors" data-link="${fullMainURL}">Copiar Link Principal</button>
+                        </div>
+                        <div>
+                            <p class="text-center font-semibold mb-2 text-gray-300">Ícone</p>
+                            <img src="${fullIconURL}" alt="Ícone de ${item.name}" class="mx-auto max-h-96 rounded-md mb-2 bg-gray-700 p-2" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1f2937/ffffff?text=Imagem n%C3%A3o encontrada';">
+                            <button class="copy-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors" data-link="${fullIconURL}">Copiar Link do Ícone</button>
+                        </div>`;
+                }
+                modal.classList.remove('hidden');
+                modalImagesContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('copy-btn')) {
+                        copyToClipboard(e.target.dataset.link);
+                    }
+                });
+            }
+
+            function closeModal() {
+                modal.classList.add('hidden');
+            }
+
+            // --- INICIALIZAÇÃO E EVENT LISTENERS ---
+            loadAssetsBtn.addEventListener('click', loadAllAssets);
+            [filterType, filterClass, filterRarity].forEach(filter => {
+                filter.addEventListener('change', applyFilters);
+            });
+            closeModalBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        });
+    </script>
+</body>
+</html>
+
